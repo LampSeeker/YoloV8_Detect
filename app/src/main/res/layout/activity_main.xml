@@ -50,6 +50,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+
     <!-- 반투명으로 정보를 출력할 레이아웃 -->
     <FrameLayout
         android:id="@+id/overlayLayout"
@@ -62,6 +63,12 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent">
         <!-- 반투명으로 출력될 정보를 여기에 추가 -->
+        <TableLayout
+            android:id="@+id/tableLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+
     </FrameLayout>
 
 

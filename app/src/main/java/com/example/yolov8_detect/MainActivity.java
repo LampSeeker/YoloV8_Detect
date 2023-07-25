@@ -8,6 +8,9 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.TableLayout;
+import android.widget.TableRow;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.AspectRatio;
@@ -31,6 +34,8 @@ import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
 
+
+
 public class MainActivity extends AppCompatActivity {
     private ProcessCameraProvider processCameraProvider;
     private PreviewView previewView;
@@ -42,7 +47,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean isOverlayVisible = false; // 반투명 레이아웃 보이기/숨기기 상태를 나타내는 변수
 
     private FrameLayout overlayLayout;
-
+    //mainactivity에서 사용이 가능하도록 전역변수 선언
+    private ArrayList<Result> resultsList = new ArrayList<>();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -51,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
         rectView = findViewById(R.id.rectView);
         overlayLayout = findViewById(R.id.overlayLayout);
         overlayLayout.setVisibility(View.GONE);
+
         //자동꺼짐 해제
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
@@ -75,19 +82,20 @@ public class MainActivity extends AppCompatActivity {
 
         // "물체 정보 보기" 버튼 클릭 이벤트 처리
         Button showInfoButton = findViewById(R.id.showInfoButton);
-        showInfoButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (isOverlayVisible) {
-                    // 반투명 레이아웃을 숨김
-                    overlayLayout.setVisibility(View.GONE);
-                } else {
-                    // 반투명 레이아웃을 보임
-                    overlayLayout.setVisibility(View.VISIBLE);
-                }
-                isOverlayVisible = !isOverlayVisible; // 상태를 반전시킴
+        showInfoButton.setOnClickListener(v -> {
+            if (isOverlayVisible) {
+                // 반투명 레이아웃을 숨김
+                overlayLayout.setVisibility(View.GONE);
+            } else {
+                // 반투명 레이아웃을 보임
+                overlayLayout.setVisibility(View.VISIBLE);
+                //showObjectInfo(resultsList);
             }
+            isOverlayVisible = !isOverlayVisible; // 상태를 반전시킴
         });
+
+        //출력 결과 띄우기
+
     }
 
 
@@ -176,19 +184,58 @@ public class MainActivity extends AppCompatActivity {
 
                     int rows = output[0][0].length; //8400
                     // tensor -> label, score, rectF
-                    ArrayList<Result> results = supportOnnx.outputsToNMSPredictions(output, rows);
+                    resultsList = supportOnnx.outputsToNMSPredictions(output, rows);
 
                     // rectF 를 보이는 화면의 비율에 맞게 수정
-                    results = rectView.transFormRect(results);
+                    resultsList = rectView.transFormRect(resultsList);
 
                     // Result(label, score, rectF) -> 화면에 출력
                     rectView.clear();
-                    rectView.resultToList(results);
+                    rectView.resultToList(resultsList);
                     rectView.invalidate();
-
+                    // UI 수정은 메인 스레드에서만 가능하므로 runOnUiThread로 메인 스레드에 전달
+                    runOnUiThread(() -> {
+                        if(isOverlayVisible){
+                            showObjectInfo(resultsList);
+                        }
+                    });
                 } catch (OrtException e) {
                     e.printStackTrace();
                 }
+            }
+        }
+
+    }
+    private void showObjectInfo(ArrayList<Result> resultsList) {
+        TableLayout tableLayout = findViewById(R.id.tableLayout);
+        int childCount = tableLayout.getChildCount();
+        // 테이블이 이미 차 있는 경우 테이블 초기화
+        if (childCount > 1) {
+            // 헤더 행을 제외한 나머지 행들을 삭제
+            tableLayout.removeViews(1, childCount - 1);
+        }
+        if (resultsList != null || !resultsList.isEmpty()) {
+
+            // 결과 데이터(label/확률/좌표값)를 테이블에 추가해서 출력
+            for (Result result : resultsList) {
+                TableRow tableRow = new TableRow(this);
+
+                // Add label and score to the row
+                TextView labelTextView = new TextView(this);
+                labelTextView.setText(String.valueOf(result.getLabel()));
+                tableRow.addView(labelTextView);
+
+                TextView scoreTextView = new TextView(this);
+                scoreTextView.setText(String.format("%.2f", result.getScore()));
+                tableRow.addView(scoreTextView);
+
+                TextView RectTextView = new TextView(this);
+                scoreTextView.setText(result.getRectF().toString());
+                tableRow.addView(RectTextView);
+
+
+                // Add the tableRow to the tableLayout
+                tableLayout.addView(tableRow);
             }
         }
 
