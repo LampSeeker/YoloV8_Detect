@@ -20,6 +20,7 @@ import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
+import androidx.core.content.ContextCompat;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -44,11 +45,17 @@ public class MainActivity extends AppCompatActivity {
     private OrtEnvironment ortEnvironment;
     private OrtSession ortSession;
 
-    private boolean isOverlayVisible = false; // 반투명 레이아웃 보이기/숨기기 상태를 나타내는 변수
+    private ImageAnalysis imageAnalysis;
 
+    private boolean isImageAnalysisEnabled = true;
+    private boolean isPreviewPaused = false;
+
+    private boolean isOverlayVisible = false; // 반투명 레이아웃 보이기/숨기기 상태를 나타내는 변수
     private FrameLayout overlayLayout;
-    //mainactivity에서 사용이 가능하도록 전역변수 선언
+
     private ArrayList<Result> resultsList = new ArrayList<>();
+
+    private String[] labels;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,6 +84,9 @@ public class MainActivity extends AppCompatActivity {
         //카메라 켜기
         startCamera();
 
+        //label name 가져오기
+        labels=rectView.getLabels();
+
         // 반투명 레이아웃 참조
         overlayLayout = findViewById(R.id.overlayLayout);
 
@@ -86,10 +96,17 @@ public class MainActivity extends AppCompatActivity {
             if (isOverlayVisible) {
                 // 반투명 레이아웃을 숨김
                 overlayLayout.setVisibility(View.GONE);
+                // 이미지 분석 다시 시작
+                enableImageAnalysis();
+                // 프리뷰 화면 재개
+                resumePreview();
             } else {
                 // 반투명 레이아웃을 보임
                 overlayLayout.setVisibility(View.VISIBLE);
-                //showObjectInfo(resultsList);
+                // 이미지 분석 중지
+                disableImageAnalysis();
+                // 프리뷰 화면 일시정지
+                pausePreview();
             }
             isOverlayVisible = !isOverlayVisible; // 상태를 반전시킴
         });
@@ -97,7 +114,37 @@ public class MainActivity extends AppCompatActivity {
         //출력 결과 띄우기
 
     }
+    //스냅샷 기능 구현 위해 imageAnalysis를 전역변수로 두고 on/off 기능 추가
+    private void enableImageAnalysis() {
+        if (!isImageAnalysisEnabled) {
+            // 이미지 분석 활성화
+            imageAnalysis.setAnalyzer(Executors.newSingleThreadExecutor(), this::imageProcessing);
+            isImageAnalysisEnabled = true;
+        }
+    }
+    private void disableImageAnalysis() {
+        if (isImageAnalysisEnabled) {
+            // 이미지 분석 비활성화
+            // 이미지 분석 비활성화 상태에서는 아무 작업도 수행하지 않음
+            imageAnalysis.setAnalyzer(Executors.newSingleThreadExecutor(), ImageProxy::close);
+            isImageAnalysisEnabled = false;
+        }
+    }
+    private void pausePreview() {
+        if (!isPreviewPaused && processCameraProvider != null) {
+            // 프리뷰 화면 일시정지
+            processCameraProvider.unbindAll();
+            isPreviewPaused = true;
+        }
+    }
 
+    private void resumePreview() {
+        if (isPreviewPaused && processCameraProvider != null) {
+            // 프리뷰 화면 재개
+            startCamera();
+            isPreviewPaused = false;
+        }
+    }
 
 
     public void permissionCheck() {
@@ -140,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
 
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
         //이미지 분석 빌드
-        ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
+        imageAnalysis = new ImageAnalysis.Builder()
                 .setTargetAspectRatio(AspectRatio.RATIO_16_9)
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build();
 
@@ -159,7 +206,7 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint("UnsafeOptInUsageError")
     public void imageProcessing(ImageProxy imageProxy) {
-        if (ortSession != null) { // ortSession이 초기화되었는지 확인
+        if (isImageAnalysisEnabled && ortSession != null) { // ortSession이 초기화되었는지 확인
             // 나머지 imageProcessing() 메서드의 내용은 그대로 유지
             Image image = imageProxy.getImage();
             if (image != null) {
@@ -209,36 +256,54 @@ public class MainActivity extends AppCompatActivity {
     private void showObjectInfo(ArrayList<Result> resultsList) {
         TableLayout tableLayout = findViewById(R.id.tableLayout);
         int childCount = tableLayout.getChildCount();
-        // 테이블이 이미 차 있는 경우 테이블 초기화
         if (childCount > 1) {
             // 헤더 행을 제외한 나머지 행들을 삭제
             tableLayout.removeViews(1, childCount - 1);
         }
-        if (resultsList != null || !resultsList.isEmpty()) {
+        if (resultsList != null || !resultsList.isEmpty())  {
 
-            // 결과 데이터(label/확률/좌표값)를 테이블에 추가해서 출력
-            for (Result result : resultsList) {
+            // 결과 데이터를 테이블에 추가
+            for (int i = 0; i < resultsList.size(); i++) { // 여기서 i 변수를 선언 및 초기화
+                Result result = resultsList.get(i);
                 TableRow tableRow = new TableRow(this);
 
                 // Add label and score to the row
                 TextView labelTextView = new TextView(this);
-                labelTextView.setText(String.valueOf(result.getLabel()));
+                labelTextView.setText(String.valueOf(labels[result.getLabel()]));
+                labelTextView.setTextSize(24);
                 tableRow.addView(labelTextView);
 
                 TextView scoreTextView = new TextView(this);
                 scoreTextView.setText(String.format("%.2f", result.getScore()));
+                scoreTextView.setTextSize(24);
                 tableRow.addView(scoreTextView);
 
                 TextView RectTextView = new TextView(this);
-                scoreTextView.setText(result.getRectF().toString());
+                RectTextView.setText(result.getRectF().toString()); // 사각형 정보를 출력
+                RectTextView.setTextSize(24);
                 tableRow.addView(RectTextView);
 
+                // Set margin to the TableRow
+                int marginInPx = getResources().getDimensionPixelSize(R.dimen.table_row_margin);
+                TableRow.LayoutParams layoutParams = new TableRow.LayoutParams(
+                        TableRow.LayoutParams.MATCH_PARENT,
+                        TableRow.LayoutParams.WRAP_CONTENT
+                );
+                layoutParams.setMargins(0, marginInPx, 0, 0); // Add top margin to the TableRow
+                tableRow.setLayoutParams(layoutParams);
+
+                // Add a separator View (black margin) between TableRow elements
+                if (i > 0) {
+                    View separator = new View(this);
+                    separator.setLayoutParams(new TableRow.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, 1));
+                    separator.setBackgroundColor(ContextCompat.getColor(this, R.color.black)); // Use the divider_black color
+                    tableLayout.addView(separator);
+                }
 
                 // Add the tableRow to the tableLayout
                 tableLayout.addView(tableRow);
             }
         }
-
     }
 
     @Override
@@ -253,6 +318,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        disableImageAnalysis();
         try {
             ortSession.close();
             ortEnvironment.close();
