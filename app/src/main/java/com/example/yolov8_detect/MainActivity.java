@@ -1,17 +1,24 @@
 package com.example.yolov8_detect;
 
 import android.annotation.SuppressLint;
+
 import android.graphics.Bitmap;
+
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.media.Image;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.AspectRatio;
 import androidx.camera.core.CameraSelector;
@@ -24,6 +31,9 @@ import androidx.core.content.ContextCompat;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -56,6 +66,11 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<Result> resultsList = new ArrayList<>();
 
     private String[] labels;
+
+    //재활용 사진 관리 배열
+    private Bitmap[] recycle_method_images;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,14 +92,15 @@ public class MainActivity extends AppCompatActivity {
 
         //모델 불러오기
         load();
-
+        //재활용 방법 이미지 불러오기
+        loadRecycleImages();
         //카메라 빌드
         setCamera();
 
         //카메라 켜기
         startCamera();
 
-        //label name 가져오기
+        //label naem 가져오기
         labels=rectView.getLabels();
 
         // 반투명 레이아웃 참조
@@ -114,6 +130,40 @@ public class MainActivity extends AppCompatActivity {
         //출력 결과 띄우기
 
     }
+
+    private void loadRecycleImages() {
+        try {
+            // AssetManager를 이용해 assets 폴더에 있는 recycle_method 디렉토리 내의 파일들을 가져옴
+            String[] imageFiles = getAssets().list("recycle_method");
+            // 비트맵 배열 초기화
+            recycle_method_images = new Bitmap[imageFiles.length];
+
+            // 각 파일들을 비트맵으로 변환하여 배열에 저장
+            for (int i = 0; i < imageFiles.length; i++) {
+                InputStream inputStream = getAssets().open("recycle_method/" + imageFiles[i]);
+
+                recycle_method_images[i] = BitmapFactory.decodeStream(inputStream);
+                // logcat에서 불러온 이미지 파일 개수 확인
+                Log.d("LoadRecycleImages", "Number of images loaded: " + imageFiles.length);
+
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void showImageDialog(Bitmap imageBitmap) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View view = getLayoutInflater().inflate(R.layout.dialog_image, null);
+        builder.setView(view);
+
+        ImageView imageView = view.findViewById(R.id.imageView);
+        imageView.setImageBitmap(imageBitmap);
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+
     //스냅샷 기능 구현 위해 imageAnalysis를 전역변수로 두고 on/off 기능 추가
     private void enableImageAnalysis() {
         if (!isImageAnalysisEnabled) {
@@ -152,10 +202,12 @@ public class MainActivity extends AppCompatActivity {
         permissionSupport.checkPermissions();
     }
 
+
     public void load() {
         //model, label 불러오기
         supportOnnx.loadModel();
         supportOnnx.loadLabel();
+
         try {
             //onnxRuntime 활성화
             ortEnvironment = OrtEnvironment.getEnvironment();
@@ -165,6 +217,10 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
+
+
+
 
     public void setCamera() {
         try {
@@ -240,6 +296,8 @@ public class MainActivity extends AppCompatActivity {
                     rectView.clear();
                     rectView.resultToList(resultsList);
                     rectView.invalidate();
+
+
                     // UI 수정은 메인 스레드에서만 가능하므로 runOnUiThread로 메인 스레드에 전달
                     runOnUiThread(() -> {
                         if(isOverlayVisible){
@@ -253,6 +311,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
+
+
     private void showObjectInfo(ArrayList<Result> resultsList) {
         TableLayout tableLayout = findViewById(R.id.tableLayout);
         int childCount = tableLayout.getChildCount();
@@ -273,16 +333,43 @@ public class MainActivity extends AppCompatActivity {
                 labelTextView.setTextSize(24);
                 tableRow.addView(labelTextView);
 
+                TextView indexTextView = new TextView(this);
+                indexTextView.setText(String.valueOf(result.getIndex()));
+                indexTextView.setTextSize(24);
+                tableRow.addView(indexTextView);
+
+                TextView recycleTextView = new TextView(this);
+                if (result.getLabel() >= 0 && result.getLabel() <= 11) {
+                    recycleTextView.setText("재활용");
+                    recycleTextView.setTextColor(Color.GREEN);
+                } else {
+                    recycleTextView.setText("일반쓰레기");
+                    recycleTextView.setTextColor(Color.YELLOW);
+                }
+                recycleTextView.setTextSize(24);
+                // Set text color to yellow
+                tableRow.addView(recycleTextView);
+
+                recycleTextView.setOnClickListener(v -> {
+                    // 해당 TableRow를 터치했을 때 실행될 로직을 여기에 작성합니다.
+                    if (recycle_method_images != null && result.getLabel() < recycle_method_images.length) {
+                        // label에 해당하는 이미지가 있는 경우, 이미지를 보여주는 다이얼로그를 띄웁니다.
+                        showImageDialog(recycle_method_images[result.getLabel()]);
+                    }
+                });
+                /*
                 TextView scoreTextView = new TextView(this);
                 scoreTextView.setText(String.format("%.2f", result.getScore()));
                 scoreTextView.setTextSize(24);
                 tableRow.addView(scoreTextView);
 
+
+
                 TextView RectTextView = new TextView(this);
                 RectTextView.setText(result.getRectF().toString()); // 사각형 정보를 출력
                 RectTextView.setTextSize(24);
                 tableRow.addView(RectTextView);
-
+                */
                 // Set margin to the TableRow
                 int marginInPx = getResources().getDimensionPixelSize(R.dimen.table_row_margin);
                 TableRow.LayoutParams layoutParams = new TableRow.LayoutParams(
