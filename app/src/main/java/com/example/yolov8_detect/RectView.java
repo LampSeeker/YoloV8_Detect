@@ -42,13 +42,12 @@ public class RectView extends View {
     }
 
     private String[] labels;
+
     public void setLabels(String[] labels) {
         this.labels = labels;
     }
+    public String[] getLabels(){return this.labels;}
 
-    public String[] getLabels() {
-        return labels;
-    }
     // rectF 비율 수정
     public ArrayList<Result> transFormRect(ArrayList<Result> resultArrayList) {
         // 핸드폰의 기종에 따라 PreviewView의 크기는 변한다.
@@ -67,26 +66,36 @@ public class RectView extends View {
             transformedRectF.top = transformedRectF.top * scaleY - (diffY / 2f);
             transformedRectF.bottom = transformedRectF.bottom * scaleY - (diffY / 2f);
 
-            Result transformedResult = new Result(result.getLabel(), result.getScore(), transformedRectF);
+            Result transformedResult = new Result(result.getLabel(), result.getScore(), transformedRectF, result.getIndex());
             transformedResults.add(transformedResult);
         }
+
         return transformedResults;
     }
+
     // 초기화
     public void clear() {
         resultMap.clear();
     }
+
+    // Result -> 각각의 해시맵 (fireMap, smokeMap)
     public void resultToList(ArrayList<Result> results) {
         resultMap.clear(); // 이전 정보를 모두 지우고 새로운 결과를 저장합니다.
+        int index = 0;
         for (Result result : results) {
             RectF rectF = result.getRectF();
             int label = result.getLabel();
-            String labelInfo = labels[label] + ", " + Math.round(result.getScore() * 100) + "%";
+            result.setIndex(index);
+            //String labelInfo = labels[label] + ", " + Math.round(result.getScore() * 100) + "%";
+            //index 출력
+            String labelInfo = labels[label] + ", " + (result.getIndex());
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 resultMap.computeIfAbsent(label, k -> new HashMap<>()).put(rectF, labelInfo);
             }
+            index++;
         }
     }
+
     // 라벨에 따른 색상을 반환하는 메서드
     private Paint getPaintByLabel(int label) {
         Paint labelPaint = new Paint();
@@ -194,11 +203,13 @@ public class RectView extends View {
             for (Map.Entry<RectF, String> rectEntry : rectMap.entrySet()) {
                 RectF rect = rectEntry.getKey();
                 String labelInfo = rectEntry.getValue();
+
                 // 외곽선 상자를 그리기 위해 새로운 Paint 객체 생성
                 Paint outlineBoxPaint = new Paint();
                 outlineBoxPaint.setStyle(Paint.Style.STROKE);
                 outlineBoxPaint.setStrokeWidth(5);
                 outlineBoxPaint.setColor(boxPaint.getColor()); // 바운딩 박스와 동일한 색상 설정
+
                 // 바운딩 박스를 외곽선 스타일로 그리도록 수정
                 canvas.drawRect(rect, outlineBoxPaint); // 외곽선 상자를 그리는 Paint로 변경
                 canvas.drawText(labelInfo, rect.left + 10.0f, rect.top + 60.0f, textPaint);
@@ -206,4 +217,5 @@ public class RectView extends View {
         }
         super.onDraw(canvas);
     }
+
 }
