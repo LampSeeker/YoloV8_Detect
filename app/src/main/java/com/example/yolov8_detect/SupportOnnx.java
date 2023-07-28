@@ -36,6 +36,7 @@ public class SupportOnnx {
     private final Context context;
     private String[] labels;
 
+
     public SupportOnnx(Context context) {
         this.context = context;
     }
@@ -80,6 +81,22 @@ public class SupportOnnx {
             e.printStackTrace();
         }
     }
+
+
+    public  Bitmap[] loadImagesFromAssets(AssetManager assetManager, String folderName, String[] fileNames) {
+        Bitmap[] bitmaps = new Bitmap[fileNames.length];
+        try {
+            for (int i = 0; i < fileNames.length; i++) {
+                InputStream inputStream = assetManager.open(folderName + "/" + fileNames[i]);
+                bitmaps[i] = BitmapFactory.decodeStream(inputStream);
+                inputStream.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return bitmaps;
+    }
+
 
     //비트맵 변환
     public Bitmap imageToBitmap(Image image) {
@@ -141,6 +158,7 @@ public class SupportOnnx {
 
     // 추론 결과 (3차원 텐서) -> 결과 추출
     public ArrayList<Result> outputsToNMSPredictions(float[][][] output, int rows) {
+        int index =0;
         ArrayList<Result> results = new ArrayList<>();
 
         float[][][] outputV8 = new float[1][rows][output[0].length];
@@ -182,11 +200,13 @@ public class SupportOnnx {
                 float yPos = outputV8[0][i][1];
                 float width = outputV8[0][i][2];
                 float height = outputV8[0][i][3];
+                //index 추가
+                index++;
 
                 //사각형은 화면 밖으로 나갈 수 없으니 화면을 넘기면 최대 화면 값을 가지게 한다.
                 RectF rectF = new RectF(Math.max(0, xPos - width / 2), Math.max(0, yPos - height / 2),
                         Math.min(INPUT_SIZE - 1, xPos + width / 2), Math.min(INPUT_SIZE - 1, yPos + height / 2));
-                Result recognition = new Result(detectionClass, confidenceInClass, rectF);
+                Result recognition = new Result(detectionClass, confidenceInClass, rectF, index);
                 results.add(recognition);
             }
         }
