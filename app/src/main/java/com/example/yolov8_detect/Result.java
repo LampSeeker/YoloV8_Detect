@@ -6,11 +6,13 @@ public class Result {
     private final int label;
     private final float score;
     private final RectF rectF;
+    private  int index;
 
-    public Result(int label, float score, RectF rectF) {
+    public Result(int label, float score, RectF rectF, int index) {
         this.label = label;
         this.score = score;
         this.rectF = rectF;
+        this.index =index;
     }
 
     public int getLabel() {
@@ -23,5 +25,11 @@ public class Result {
 
     public RectF getRectF() {
         return rectF;
+    }
+    public int getIndex() {
+        return index;
+    }
+    public void setIndex(int index) {
+        this.index = index;
     }
 }
