@@ -51,7 +51,6 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
 
-    <!-- 반투명으로 정보를 출력할 레이아웃 -->
     <FrameLayout
         android:id="@+id/overlayLayout"
         android:layout_width="match_parent"
@@ -63,12 +62,45 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent">
         <!-- 반투명으로 출력될 정보를 여기에 추가 -->
-        <TableLayout
-            android:id="@+id/tableLayout"
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
+            android:layout_height="match_parent">
 
+            <TableLayout
+                android:id="@+id/tableLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
 
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <!-- "물체 종류" 칼럼의 Cell 크기를 고정 -->
+                    <TextView
+                        android:layout_width="150dp"
+                        android:layout_height="wrap_content"
+                        android:text="물체 종류"
+                        android:textSize="32sp"/>
+
+                    <!-- "확률" 칼럼의 Cell 크기를 고정 -->
+                    <TextView
+                        android:layout_width="100dp"
+                        android:layout_height="wrap_content"
+                        android:text="번호"
+                        android:textSize="32sp"/>
+
+                    <!-- "좌표값" 칼럼의 Cell 크기를 고정 -->
+                    <TextView
+                        android:layout_width="200dp"
+                        android:layout_height="wrap_content"
+                        android:text="버리는 방법"
+                        android:textSize="32sp"/>
+
+                </TableRow>
+
+            </TableLayout>
+
+        </ScrollView>
     </FrameLayout>
 
 
