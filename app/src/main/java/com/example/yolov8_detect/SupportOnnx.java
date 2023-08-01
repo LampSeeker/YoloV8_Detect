@@ -25,14 +25,14 @@ import java.util.List;
 import java.util.PriorityQueue;
 
 public class SupportOnnx {
-    static final String fileName = "best_uniform.onnx";
-    static final String labelName = "classes.txt";
+    static final String fileName = "best_0731.onnx";
+    static final String labelName = "classesV2.txt";
     static final int INPUT_SIZE = 640;
     static final int BATCH_SIZE = 1;
     static final int PIXEL_SIZE = 3;
 
-    public float iouThresh = 0.5f;
-    public float objectThresh = 0.4f;
+    public float iouThresh = 0.75f;
+    public float objectThresh = 0.3f;
     private final Context context;
     private String[] labels;
 
