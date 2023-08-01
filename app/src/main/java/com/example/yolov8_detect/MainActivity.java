@@ -54,7 +54,6 @@ public class MainActivity extends AppCompatActivity {
     private SupportOnnx supportOnnx;
     private OrtEnvironment ortEnvironment;
     private OrtSession ortSession;
-
     private ImageAnalysis imageAnalysis;
 
     private boolean isImageAnalysisEnabled = true;
@@ -217,9 +216,6 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
-
-
-
 
 
     public void setCamera() {
