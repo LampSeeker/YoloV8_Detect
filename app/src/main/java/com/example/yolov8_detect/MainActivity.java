@@ -45,7 +45,7 @@ import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
 
-
+import com.jcraft.jsch.*;
 
 public class MainActivity extends AppCompatActivity {
     private ProcessCameraProvider processCameraProvider;
@@ -115,6 +115,8 @@ public class MainActivity extends AppCompatActivity {
                 enableImageAnalysis();
                 // 프리뷰 화면 재개
                 resumePreview();
+                connectEC2();
+
             } else {
                 // 반투명 레이아웃을 보임
                 overlayLayout.setVisibility(View.VISIBLE);
@@ -129,6 +131,45 @@ public class MainActivity extends AppCompatActivity {
         //출력 결과 띄우기
 
     }
+
+    private void connectEC2() {
+        String host = "ec2-54-95-170-75.ap-northeast-1.compute.amazonaws.com";
+        int port = 22;
+        String username = "ec2-user";
+        String privateKeyPath = "assets/b5-5.pem";
+        String remoteFilePath = "home/ec2-user/best_0731.onnx";
+        String localFilePath = "recycle_method";
+
+        JSch jsch = new JSch();
+        try {
+            // Load the private key from the specified path
+            jsch.addIdentity(privateKeyPath);
+
+            // Create an SSH session
+            Session session = jsch.getSession(username, host, port);
+            session.setConfig("StrictHostKeyChecking", "no");
+            session.connect();
+            Log.d("SESSION", "세션 생성" + session.isConnected());
+
+            // Create an instance of ChannelSftp to transfer the file
+            ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
+            channelSftp.connect();
+
+
+            // Download the file from the remote server
+            channelSftp.get(remoteFilePath, localFilePath);
+
+            // Disconnect the SFTP channel and the SSH session
+            channelSftp.disconnect();
+            session.disconnect();
+
+            System.out.println("File downloaded successfully!");
+        } catch (JSchException | SftpException e) {
+            e.printStackTrace();
+        }
+    }
+
+
 
     private void loadRecycleImages() {
         try {
