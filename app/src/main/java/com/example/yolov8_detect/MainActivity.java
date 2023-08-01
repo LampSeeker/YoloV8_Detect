@@ -47,6 +47,8 @@ import ai.onnxruntime.OrtSession;
 
 import com.jcraft.jsch.*;
 
+
+
 public class MainActivity extends AppCompatActivity {
     private ProcessCameraProvider processCameraProvider;
     private PreviewView previewView;
@@ -55,6 +57,8 @@ public class MainActivity extends AppCompatActivity {
     private OrtEnvironment ortEnvironment;
     private OrtSession ortSession;
     private ImageAnalysis imageAnalysis;
+
+    private DownloadTask downloadtask;
 
     private boolean isImageAnalysisEnabled = true;
     private boolean isPreviewPaused = false;
@@ -69,7 +73,8 @@ public class MainActivity extends AppCompatActivity {
     //재활용 사진 관리 배열
     private Bitmap[] recycle_method_images;
 
-
+    String fileUrl = "ec2-54-95-170-75.ap-northeast-1.compute.amazonaws.com//home/ec2-user/best_0731.onnx";
+    String destinationPath = "Download";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -87,7 +92,8 @@ public class MainActivity extends AppCompatActivity {
 
         //Onnx 처리 지원 객체
         supportOnnx = new SupportOnnx(this);
-
+        //ec2 다운로드 처리 객체
+        downloadtask = new DownloadTask();
 
         //모델 불러오기
         load();
@@ -98,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
 
         //카메라 켜기
         startCamera();
+        downloadtask.execute(fileUrl,destinationPath);
 
         //label naem 가져오기
         labels=rectView.getLabels();
