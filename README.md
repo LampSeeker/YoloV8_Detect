@@ -12,4 +12,4 @@
 
 ## 사용 데이터셋
 
-- AI HUB 생활 폐기물 데이터
+- AI HUB 생활 폐기물 데이터(https://aihub.or.kr/aihubdata/data/view.do?currMenu=115&topMenu=100&aihubDataSe=realm&dataSetSn=71385)
