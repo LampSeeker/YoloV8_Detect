@@ -2,10 +2,13 @@ package com.example.yolov8_detect;
 
 import android.annotation.SuppressLint;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraManager;
 import android.media.Image;
 import android.os.Bundle;
 import android.util.Log;
@@ -17,10 +20,13 @@ import android.widget.ImageView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
-
+import android.widget.Toast;
+import android.widget.ToggleButton;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.AspectRatio;
+
+import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
@@ -28,10 +34,7 @@ import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
-
 import com.google.common.util.concurrent.ListenableFuture;
-
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.FloatBuffer;
@@ -44,9 +47,6 @@ import ai.onnxruntime.OnnxTensor;
 import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
-
-import com.jcraft.jsch.*;
-
 
 
 public class MainActivity extends AppCompatActivity {
@@ -73,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
     //재활용 사진 관리 배열
     private Bitmap[] recycle_method_images;
 
+    private ToggleButton toggleButton;
     String fileUrl = "ec2-54-95-170-75.ap-northeast-1.compute.amazonaws.com//home/ec2-user/best_0731.onnx";
     String destinationPath = "Download";
     @Override
@@ -95,6 +96,8 @@ public class MainActivity extends AppCompatActivity {
         //ec2 다운로드 처리 객체
         downloadtask = new DownloadTask();
 
+
+
         //모델 불러오기
         load();
         //재활용 방법 이미지 불러오기
@@ -106,12 +109,19 @@ public class MainActivity extends AppCompatActivity {
         startCamera();
         downloadtask.execute(fileUrl,destinationPath);
 
-        //label naem 가져오기
+        //label name 가져오기
         labels=rectView.getLabels();
-
-        // 반투명 레이아웃 참조
-        overlayLayout = findViewById(R.id.overlayLayout);
-
+        // 토글 버튼 클릭 이벤트 핸들러
+        ToggleButton analysisButton = findViewById(R.id.analysisButton);
+        analysisButton.setOnClickListener(v -> {
+            if (analysisButton.isChecked()) {
+                // 토글 버튼이 체크된 상태일 때, 바운딩 박스 그리기 기능 시작
+                rectView.setBoundingBoxEnabled(true);
+            } else {
+                // 토글 버튼이 체크되지 않은 상태일 때, 바운딩 박스 그리기 기능 중지
+                rectView.setBoundingBoxEnabled(false);
+            }
+        });
         // "물체 정보 보기" 버튼 클릭 이벤트 처리
         Button showInfoButton = findViewById(R.id.showInfoButton);
         showInfoButton.setOnClickListener(v -> {
@@ -122,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
                 enableImageAnalysis();
                 // 프리뷰 화면 재개
                 resumePreview();
-                connectEC2();
+
 
             } else {
                 // 반투명 레이아웃을 보임
@@ -135,48 +145,11 @@ public class MainActivity extends AppCompatActivity {
             isOverlayVisible = !isOverlayVisible; // 상태를 반전시킴
         });
 
-        //출력 결과 띄우기
+        // 반투명 레이아웃 참조
+        overlayLayout = findViewById(R.id.overlayLayout);
+
 
     }
-
-    private void connectEC2() {
-        String host = "ec2-54-95-170-75.ap-northeast-1.compute.amazonaws.com";
-        int port = 22;
-        String username = "ec2-user";
-        String privateKeyPath = "assets/b5-5.pem";
-        String remoteFilePath = "home/ec2-user/best_0731.onnx";
-        String localFilePath = "recycle_method";
-
-        JSch jsch = new JSch();
-        try {
-            // Load the private key from the specified path
-            jsch.addIdentity(privateKeyPath);
-
-            // Create an SSH session
-            Session session = jsch.getSession(username, host, port);
-            session.setConfig("StrictHostKeyChecking", "no");
-            session.connect();
-            Log.d("SESSION", "세션 생성" + session.isConnected());
-
-            // Create an instance of ChannelSftp to transfer the file
-            ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
-            channelSftp.connect();
-
-
-            // Download the file from the remote server
-            channelSftp.get(remoteFilePath, localFilePath);
-
-            // Disconnect the SFTP channel and the SSH session
-            channelSftp.disconnect();
-            session.disconnect();
-
-            System.out.println("File downloaded successfully!");
-        } catch (JSchException | SftpException e) {
-            e.printStackTrace();
-        }
-    }
-
-
 
     private void loadRecycleImages() {
         try {
@@ -355,8 +328,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
-
-
     private void showObjectInfo(ArrayList<Result> resultsList) {
         TableLayout tableLayout = findViewById(R.id.tableLayout);
         int childCount = tableLayout.getChildCount();
@@ -401,19 +372,6 @@ public class MainActivity extends AppCompatActivity {
                         showImageDialog(recycle_method_images[result.getLabel()]);
                     }
                 });
-                /*
-                TextView scoreTextView = new TextView(this);
-                scoreTextView.setText(String.format("%.2f", result.getScore()));
-                scoreTextView.setTextSize(24);
-                tableRow.addView(scoreTextView);
-
-
-
-                TextView RectTextView = new TextView(this);
-                RectTextView.setText(result.getRectF().toString()); // 사각형 정보를 출력
-                RectTextView.setTextSize(24);
-                tableRow.addView(RectTextView);
-                */
                 // Set margin to the TableRow
                 int marginInPx = getResources().getDimensionPixelSize(R.dimen.table_row_margin);
                 TableRow.LayoutParams layoutParams = new TableRow.LayoutParams(

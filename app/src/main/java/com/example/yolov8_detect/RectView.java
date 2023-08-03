@@ -21,7 +21,7 @@ public class RectView extends View {
 
     // 텍스트를 그리기 위한 Paint 변수
     private Paint textPaint;
-    private Paint emptyBoxPaint;
+    private boolean isBoundingBoxEnabled = false;
 
     public RectView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -31,6 +31,11 @@ public class RectView extends View {
         textPaint = new Paint();
         textPaint.setColor(Color.WHITE);
         textPaint.setTextSize(50.0f);
+    }
+
+    public void setBoundingBoxEnabled(boolean enabled) {
+        isBoundingBoxEnabled = enabled;
+        invalidate(); // 상태가 변경되면 뷰를 다시 그립니다.
     }
 
     public void addRectToObject(int left, int top, int right, int bottom) {
@@ -194,27 +199,28 @@ public class RectView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        // 모든 맵에 대해 반복하면서 맵의 내용을 그립니다.
-        for (Map.Entry<Integer, Map<RectF, String>> entry : resultMap.entrySet()) {
-            int label = entry.getKey();
-            Map<RectF, String> rectMap = entry.getValue();
-            Paint boxPaint = getPaintByLabel(label); // 바운딩 박스 색상 가져오기
+        if (isBoundingBoxEnabled) {
+            // 토글 버튼 상태에 따라 바운딩 박스 그리기 여부를 결정
+            for (Map.Entry<Integer, Map<RectF, String>> entry : resultMap.entrySet()) {
+                int label = entry.getKey();
+                Map<RectF, String> rectMap = entry.getValue();
+                Paint boxPaint = getPaintByLabel(label);
 
-            for (Map.Entry<RectF, String> rectEntry : rectMap.entrySet()) {
-                RectF rect = rectEntry.getKey();
-                String labelInfo = rectEntry.getValue();
+                for (Map.Entry<RectF, String> rectEntry : rectMap.entrySet()) {
+                    RectF rect = rectEntry.getKey();
+                    String labelInfo = rectEntry.getValue();
 
-                // 외곽선 상자를 그리기 위해 새로운 Paint 객체 생성
-                Paint outlineBoxPaint = new Paint();
-                outlineBoxPaint.setStyle(Paint.Style.STROKE);
-                outlineBoxPaint.setStrokeWidth(5);
-                outlineBoxPaint.setColor(boxPaint.getColor()); // 바운딩 박스와 동일한 색상 설정
+                    Paint outlineBoxPaint = new Paint();
+                    outlineBoxPaint.setStyle(Paint.Style.STROKE);
+                    outlineBoxPaint.setStrokeWidth(5);
+                    outlineBoxPaint.setColor(boxPaint.getColor());
 
-                // 바운딩 박스를 외곽선 스타일로 그리도록 수정
-                canvas.drawRect(rect, outlineBoxPaint); // 외곽선 상자를 그리는 Paint로 변경
-                canvas.drawText(labelInfo, rect.left + 10.0f, rect.top + 60.0f, textPaint);
+                    canvas.drawRect(rect, outlineBoxPaint);
+                    canvas.drawText(labelInfo, rect.left + 10.0f, rect.top + 60.0f, textPaint);
+                }
             }
         }
+
         super.onDraw(canvas);
     }
 

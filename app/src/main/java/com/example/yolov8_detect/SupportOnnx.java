@@ -158,6 +158,7 @@ public class SupportOnnx {
 
     // 추론 결과 (3차원 텐서) -> 결과 추출
     public ArrayList<Result> outputsToNMSPredictions(float[][][] output, int rows) {
+
         int index =0;
         ArrayList<Result> results = new ArrayList<>();
 
@@ -212,6 +213,7 @@ public class SupportOnnx {
         }
 
         return nms(results);
+
     }
 
     // NMS (비최대 억제)
